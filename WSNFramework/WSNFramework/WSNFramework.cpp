@@ -1,11 +1,12 @@
 // WSNFramework.cpp : main project file.
 
 #include "stdafx.h"
+using namespace std;
 
-using namespace System;
-
-int main(array<System::String ^> ^args)
+int main()
 {
-    Console::WriteLine(L"Hello World");
+	cout<<"HELLO WORLD"<<endl;
+	uint i;
+	cin>>i;
     return 0;
 }
