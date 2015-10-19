@@ -1,5 +1,12 @@
 #pragma once
-
+#include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctime>
+#include <math.h>
 #include <CGAL/Cartesian.h>
 #include <CGAL/global_functions_spherical_kernel_3.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -12,6 +19,9 @@
 #include <CGAL/Min_sphere_of_points_d_traits_3.h>
 #include <CGAL/Min_sphere_d.h>
 #include <CGAL/Exact_spherical_kernel_3.h>
+
+#include "consts.h"
+#include "generalFunctions.h"
 
 typedef unsigned int uint;
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -33,3 +43,5 @@ typedef K::Circle_3 Circle_3;
 typedef K::Vector_3 Vector_3;
 typedef CGAL::Polyhedron_3<K> Polyhedron;
 typedef CGAL::Min_sphere_of_points_d_traits_3<K, double> Min_Sphere_Traits;
+
+using namespace std;
