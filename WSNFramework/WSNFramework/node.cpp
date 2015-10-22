@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "node.h"
 
+//-----  CONSTRUCTORS  -----
 NetworkNode::NetworkNode():
   Name(),
   Location(),
@@ -18,35 +19,65 @@ NetworkNode::NetworkNode(const string& name, const Point_3& loc, double r, doubl
 		SetLocation(loc);
 		SetSquaredRange(r);
 		SetSpeed(s);
+}
+
+//-----  GETTERS  -----
+NetworkNode::Neighbor NetworkNode::GetClosestNeighborToNode(const string& destName) const {	
+	Neighbor n(nullptr, 0); //if no closer neighbor is found to destination, then set closest neighbor to this
+	Point_3 destLoc;
+				  
+	if(Neighbors.size() > 0 && MyLookup != nullptr && MyLookup->GetLocationOfNode(destName, destLoc)) {
+		double minDist = GetDistanceToLocation(destLoc),
+			   dist;
+
+	   for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
+		   if(it->Node != nullptr) {
+			   dist = CGAL::squared_distance(it->Node->GetLocation(), destLoc);
+				if(dist < minDist) {
+					minDist = dist;
+					n = *it;
+				}	
+		   }	
+		}
 	}
-
-Point_3 NetworkNode::GetLocation() const{ return Location; }
-
-double NetworkNode::GetSquaredRange() const{ return SquaredRange; }
-
-uint NetworkNode::GetProp() const { return Properties; }
-
-double NetworkNode::GetSpeed() const { return Speed; }
-
-bool NetworkNode::IsProp(NodeInfo ni) const{
-	return (Properties & ni);
+	return n;
 }
 
-bool NetworkNode::IsBoundary() { 
-	return IsProp(NodeInfo::BOUNDARY); 
+string NetworkNode::GetClosestNeighbor() const {
+	string closestNghb;
+	if(Neighbors.size() > 0) {
+		auto it = Neighbors.begin();
+		double minDist = it->Distance;
+		closestNghb =it->Node->Name;
+		while(it != Neighbors.end()) {
+			if(it->Distance < minDist)
+				closestNghb = it->Node->Name;
+			++it;
+		}
+	}
+	else
+		closestNghb = Name;
+	return closestNghb;
 }
 
-double NetworkNode::GetDistanceToNetworkNode(const NetworkNode& n) const {
-	return CGAL::squared_distance(Location, n.GetLocation());
+bool NetworkNode::GetAllNodesConnectedToNode(vector<string> &connectednodes) {
+	for(auto n_it = Neighbors.begin(); n_it != Neighbors.end(); ++n_it) {
+		bool neighborExists = false;
+		for(auto v_it = connectednodes.begin(); v_it != connectednodes.end(); ++v_it) {
+			if(n_it->Node->Name.compare(*v_it) == 0) {
+				neighborExists = true;
+				break;
+			}
+		}
+		if(!neighborExists) {
+			connectednodes.push_back(n_it->Node->Name);
+			return n_it->Node->GetAllNodesConnectedToNode(connectednodes);
+		}
+	}
+	return true;
 }
 
-double NetworkNode::GetDistanceToLocation(const Point_3& loc) const {
-	return CGAL::squared_distance(Location, loc);
-}
-
-void NetworkNode::SetLocation(const Point_3& loc) {
-  Location = loc;
-}
+//-----  SETTERS  -----
 
 bool NetworkNode::SetLocationAndSquaredRange(const string &nodeLocation) {
 	vector<string>	tokens = General::TokenizeString(nodeLocation, C_COMMA);
@@ -80,19 +111,25 @@ bool NetworkNode::SetLocationFromGEXFStr(const string &gexfLoc) {
 	}
 }
 
-void NetworkNode::SetSquaredRange(double r) {
-	(r > 0) ? SquaredRange = r : SquaredRange = 0;
+//----- CHECKERS  -----
+
+bool NetworkNode::HasNeighbor(const Neighbor &n){
+	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
+		if(it->Node == n.Node)
+			return true;
+	}
+	return false;
 }
 
-void NetworkNode::SetLookup(Lookup *lup) { MyLookup = lup; }
-
-void NetworkNode::SetSpeed(double s) {
-	s >= 0 ? Speed = s : s = 0;
+bool NetworkNode::HasNeighbor(const string& neighborName) const{
+	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
+		if((it->Node)->Name.compare(neighborName) == 0)
+			return true;
+	}
+	return false;
 }
 
-void NetworkNode::AddProp(NodeInfo ni) {
-	Properties |= ni;
-}
+//-----  MODIFIERS  -----
 
 bool NetworkNode::AddNeighbor(const Neighbor &n){
 	bool exists = false;
@@ -123,59 +160,7 @@ bool NetworkNode::RemoveNeighbor(const Neighbor &n){
 	return false;
 }
 
-bool NetworkNode::HasNeighbor(const Neighbor &n){
-	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		if(it->Node == n.Node)
-			return true;
-	}
-	return false;
-}
-
-bool NetworkNode::HasNeighbor(const string& neighborName) const{
-	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		if((it->Node)->Name.compare(neighborName) == 0)
-			return true;
-	}
-	return false;
-}
-
-string NetworkNode::GetClosestNeighborToNode(const string& destName) const {	
-	string  closestNeighborName = Name; //if no closer neighbor is found to destination, then set closest neighbor to this
-	Point_3 destLoc;
-				  
-	if(Neighbors.size() > 0 && MyLookup != nullptr && MyLookup->GetLocationOfNode(destName, destLoc)) {
-		double minDist = GetDistanceToLocation(destLoc),
-			   dist;
-
-	   for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		   if(it->Node != nullptr) {
-			   dist = CGAL::squared_distance(it->Node->GetLocation(), destLoc);
-				if(dist < minDist) {
-					minDist = dist;
-					closestNeighborName = it->Node->Name;
-				}	
-		   }	
-		}
-	}
-	return closestNeighborName;
-}
-
-string NetworkNode::GetClosestNeighbor() const {
-	string closestNghb;
-	if(Neighbors.size() > 0) {
-		auto it = Neighbors.begin();
-		double minDist = it->Distance;
-		closestNghb =it->Node->Name;
-		while(it != Neighbors.end()) {
-			if(it->Distance < minDist)
-				closestNghb = it->Node->Name;
-			++it;
-		}
-	}
-	else
-		closestNghb = Name;
-	return closestNghb;
-}
+//----- OPERATIONS  -----
 
 bool NetworkNode::operator==(const NetworkNode& n1) const{
 	return Location == n1.Location && SquaredRange == n1.SquaredRange;
@@ -193,19 +178,48 @@ bool NetworkNode::operator<(const NetworkNode& n1) const{
 	return Location > n1.GetLocation();
 }
 
-bool NetworkNode::GetAllNodesConnectedToNode(vector<string> &connectednodes) {
-	for(auto n_it = Neighbors.begin(); n_it != Neighbors.end(); ++n_it) {
-		bool neighborExists = false;
-		for(auto v_it = connectednodes.begin(); v_it != connectednodes.end(); ++v_it) {
-			if(n_it->Node->Name.compare(*v_it) == 0) {
-				neighborExists = true;
-				break;
-			}
+//-----  INPUT/OUTPUT  -----
+
+//eg. Node1=(1, 1, 1, r = 3)
+void NetworkNode::PrintNode(string &nodeStr) const {
+	stringstream nStr;
+    nStr << Name << "=( " << Location.x() << ", " << Location.y() << ", " << Location.z() << ", r = " << SquaredRange << " )"; 
+	nodeStr = nStr.str();
+}
+
+//eg. N(Node1)=[Node2, Node3, Node4]
+void NetworkNode::PrintNeighbors(string &neighborStr) const {
+	if(Neighbors.size() > 0) {
+		stringstream nStr;
+		auto it = Neighbors.begin();
+		nStr << "N(" << Name << ")=[" << it->Node->Name;
+		while(it != Neighbors.end() - 1) {
+			++it;
+			nStr << ", " << it->Node->Name;
 		}
-		if(!neighborExists) {
-			connectednodes.push_back(n_it->Node->Name);
-			return n_it->Node->GetAllNodesConnectedToNode(connectednodes);
-		}
+		nStr << "]" << endl;
+			
+		neighborStr = nStr.str();
 	}
-	return true;
+}
+
+//-----  ROUTING -----
+
+NetworkNode* NetworkNode::RoutePureGreedy(Message &m) {
+	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
+	Neighbor n = GetClosestNeighborToNode(m.EndNode);
+	return n.Node;
+}
+
+NetworkNode* NetworkNode::RoutePureRandom(Message &m) {
+	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
+	Neighbor n(nullptr, 0);
+	if(Neighbors.size() > 1) {
+		srand((uint)time(NULL));
+		n = Neighbors[rand() % Neighbors.size()];
+	}
+	else if(Neighbors.size() == 1)
+		n = *Neighbors.begin();
+
+	return n.Node;
 }

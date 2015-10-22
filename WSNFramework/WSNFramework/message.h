@@ -9,11 +9,15 @@ public:
 
 	Message();
 	Message(const string& start, const string& end);
-	string GetHeader() const;
+
+	//Getters
+	string GetHeader() const { return Header; };
+	vector<string> GetPath() { return Path; };
+	string GetAdditionalInfo() const { return AdditionalInfo; };
+
+	//Modifiers
 	void   AddToHeader(const string& h);
-	vector<string> GetPath();
-	void   AddNodeToPath(const string& node);
-	string GetAdditionalInfo() const;
+	void   AddNodeToPath(const string& node) { Path.push_back(node); };
 	void   AddAdditionalInfo(const string& info);
 
 private:

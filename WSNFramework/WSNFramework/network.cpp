@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "network.h"
 
+//-----  CONSTRUCTOR & INIT  -----
 Network::Network() :
   NetworkNodes(),
   VirtualNodes(),
@@ -9,6 +10,7 @@ Network::Network() :
 bool Network::InitNetwork(double NetworkX, double NetworkY, double NetworkZ, double nodeSquaredRange, uint count) {
 	GenerateRandomNetwork(NetworkX, NetworkY, NetworkZ, nodeSquaredRange, count);
 	InitializeLookupService();
+	ComputeNeighborhoods();
 	return ( (count - 0.1*count) <= NetworkNodes.size()); //return false if we have more than 10% node collisions
 }
 
@@ -35,6 +37,15 @@ bool Network::InitConnectedNetwork(const string &networkDefFile, bool gexf, doub
 	return false;
 }
 
+void Network::InitializeLookupService() {
+	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
+		LookupService.AddNode(it->Name, it->GetLocation());
+		it->SetLookup(&LookupService);
+	}
+}
+
+//-----  GETTERS -----
+
 int	Network::GetIndexOfNode(const NetworkNode &node) const {
 	for(size_t i = 0 ; i < GetNodeCount(); ++i) {
 		if(NetworkNodes[i] == node)
@@ -43,20 +54,17 @@ int	Network::GetIndexOfNode(const NetworkNode &node) const {
 	return -1;
 }
 
-bool Network::GetNodeByName(const string& nodeNm, NetworkNode &node) const {
+bool Network::GetNodeByName(const string& nodeNm, NetworkNode *node) {
 	for(auto iter = NetworkNodes.begin(); iter != NetworkNodes.end(); ++iter) {
 		if(iter->Name.compare(nodeNm) == 0) {
-			node = *iter;
+			node = &(*iter);
 			return true;
 		}
 	}
 	return false;
 }
 
-uint Network::GetNodeCount() const{ 
-	return NetworkNodes.size(); 
-}
-
+//-----  MODIFIERS -----
 void Network::AddNode(NetworkNode &n) {
 	bool isNode = false;
 	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
@@ -66,10 +74,8 @@ void Network::AddNode(NetworkNode &n) {
 		}
 	}
 
-	if(!isNode && n.GetLocation().x() >= 0 && n.GetLocation().y() >= 0 && n.GetLocation().z() >= 0) {
-		ComputeNodeNeighborhood(n);
+	if(!isNode && n.GetLocation().x() >= 0 && n.GetLocation().y() >= 0 && n.GetLocation().z() >= 0)
 		NetworkNodes.push_back(n);
-	}
 }
 
 void Network::AddVirtualNode(const NetworkNode &n) {
@@ -140,26 +146,40 @@ void Network::RemoveIsolatedNodes() {
 	}
 }
 
+//-----  COMPUTE/MODIFY
+
 //REVIEW: Is there a way to simulate "neighbor finding" in a more efficient way?
-void Network::ComputeNodeNeighborhood(NetworkNode &n) {
+void Network::ComputeNodeNeighborhood(NetworkNode *n) {
 	double dist;
 	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		dist = n.GetDistanceToNetworkNode(*it);
-		if(dist <= n.GetSquaredRange()) {
+		if(it->Name.compare(n->Name) == 0)
+			continue;
+		dist = n->GetDistanceToNetworkNode(*it);
+		if(dist <= n->GetSquaredRange()) {
 			NetworkNode::Neighbor nghb(&(*it), dist);
-			n.AddNeighbor(nghb);
+			n->AddNeighbor(nghb);
 		}
 		if(dist <= it->GetSquaredRange()) {
-			NetworkNode::Neighbor nghb(&(*it), dist);
-			n.AddNeighbor(nghb);
+			NetworkNode::Neighbor nghb(n, dist);
+			it->AddNeighbor(nghb);
 		}
 	}
 }
 
-void Network::InitializeLookupService() {
-	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		LookupService.AddNode(it->Name, it->GetLocation());
-		it->SetLookup(&LookupService);
+void Network::ComputeNeighborhoods() {
+	double dist;
+	for(auto it1 = NetworkNodes.begin(); it1 != NetworkNodes.end() - 1; ++it1) {
+		for(auto it2 = it1 + 1; it2 != NetworkNodes.end(); ++it2) { 
+			dist = it1->GetDistanceToNetworkNode(*it2);
+			if(dist <= it1->GetSquaredRange()) {
+				NetworkNode::Neighbor nghb(&(*it2), dist);
+				it1->AddNeighbor(nghb);
+			}
+			if(dist <= it2->GetSquaredRange()) {
+				NetworkNode::Neighbor nghb(&(*it1), dist);
+				it2->AddNeighbor(nghb);
+			}
+		}
 	}
 }
 
@@ -197,14 +217,14 @@ void Network::ComputeNetworkDiameter() {
 }
 
 bool Network::AreNodesConnected(const string &node1, const string &node2, vector<string> &visitedNodes) {
-	NetworkNode start;
+	NetworkNode *start;
 	GetNodeByName(node1, start);
-	if(start.HasNeighbor(node2))
+	if(start->HasNeighbor(node2))
 		return true;
 
 	visitedNodes.push_back(node1);
 	bool foundPath = false;
-	for(auto iter = start.Neighbors.begin(); !foundPath && iter != start.Neighbors.end(); ++iter) {
+	for(auto iter = start->Neighbors.begin(); !foundPath && iter != start->Neighbors.end(); ++iter) {
 		bool visited = false;
 		for(size_t i = 0; i < visitedNodes.size(); ++i) {
 			if(visitedNodes[i].compare(iter->Node->Name) == 0) {
@@ -335,6 +355,8 @@ void Network::GenerateRandomNetwork(double Max_x, double Max_y, double Max_z, do
 	}
 }
 
+//-----  INPUT/OUTPUT  -----
+
 bool Network::ReadNetworkFromFile(const string &fileName) {
 	ifstream in_net;
 	string	 line;
@@ -402,6 +424,60 @@ bool Network::ReadNetworkFromGEFX(const string &gexfFileName, double range){
 		cout<<"Exception number " << e << " occurred.";
 		return false;
 	}
+}
+
+void Network::PrintNetwork(string &netStr) const {
+	stringstream nStr;
+	string nodeStr,
+		   neighborStr;
+	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
+		it->PrintNode(nodeStr);
+		it->PrintNeighbors(neighborStr);
+		nStr << nodeStr << "\n\t" << neighborStr << endl;
+	}
+	netStr = nStr.str();
+}
+
+//-----  ROUTING -----
+
+bool Network::RouteMessage(Message &m, RoutingAlg algorithm) {
+	NetworkNode *startNode,
+		        *endNode;
+	if(GetNodeByName(m.StartNode, startNode) && GetNodeByName(m.EndNode, endNode)) {
+		switch(algorithm) {
+			case RoutingAlg::PURE_GREEDY:
+				return RouteGreedy(m, startNode, endNode);
+			case RoutingAlg::DIJKSTRA:
+				cout<<"DIJKSTRA IS STILL UNIMPLEMENTED"<<endl;
+				break;
+			case RoutingAlg::PURE_RANDOM:
+				cout<<"PURE RANDOM IS STILL UNIMPLEMENTED"<<endl;
+				break;
+			default:
+				return true;
+		}
+		return false;
+	}
+	else {
+		cout<< "ERROR: Could not find node : " << m.StartNode << " or " << m.EndNode << endl;
+		return false;
+	}
+}
+
+bool Network::RouteGreedy(Message &m, NetworkNode *start, NetworkNode *end) {
+	if(start && end) {
+		NetworkNode *currentNode = start;
+		while(currentNode) {
+			if(currentNode == end)
+				return true;
+
+			currentNode = currentNode->RoutePureGreedy(m);
+		}
+		return false;
+	}
+	else
+		return false;
+	
 }
 /*void Network<Point_3, Polyhedron>::ComputeBoundaryNodes() {
 	vector<NetworkNode<Point_3>> neighborhood;

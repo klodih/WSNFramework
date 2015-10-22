@@ -12,8 +12,7 @@ enum NodeInfo {
 };
 
 enum RoutingAlg {
-	BRUTEFORCE,
-	GREEDY,
-	RANDOM,
+	PURE_GREEDY,
+	PURE_RANDOM,
 	DIJKSTRA
 };
