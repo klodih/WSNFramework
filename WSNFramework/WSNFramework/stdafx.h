@@ -21,7 +21,6 @@
 #include <CGAL/Exact_spherical_kernel_3.h>
 
 #include "consts.h"
-#include "generalFunctions.h"
 
 typedef unsigned int uint;
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;

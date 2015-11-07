@@ -45,6 +45,15 @@
     <ClInclude Include="generalFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="gephi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="comCenter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="simulator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="app.rc">
@@ -71,6 +80,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="generalFunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gephi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="comCenter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="simulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

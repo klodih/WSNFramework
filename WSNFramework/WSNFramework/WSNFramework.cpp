@@ -1,16 +1,18 @@
 // WSNFramework.cpp : main project file.
 
 #include "stdafx.h"
-#include "network.h"
+#include "simulator.h"
 using namespace std;
 
 int main()
 {
-	Network myNetwork;
-	myNetwork.InitNetwork(50, 50, 50, 25, 50);
+	RoutingSimulator simulation1;
+	simulation1.InitNetwork(100, 100, 100, 20, 100);
+
 	string netStr;
-	myNetwork.PrintNetwork(netStr);
+	simulation1.PrintNetwork(netStr);
 	cout<<netStr<<endl;
+
 	uint i;
 	cin>>i;
     return 0;

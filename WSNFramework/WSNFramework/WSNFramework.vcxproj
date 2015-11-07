@@ -101,24 +101,30 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="comCenter.h" />
     <ClInclude Include="consts.h" />
     <ClInclude Include="generalFunctions.h" />
+    <ClInclude Include="gephi.h" />
     <ClInclude Include="lookup.h" />
     <ClInclude Include="message.h" />
     <ClInclude Include="network.h" />
     <ClInclude Include="node.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="simulator.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="app.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="comCenter.cpp" />
     <ClCompile Include="generalFunctions.cpp" />
+    <ClCompile Include="gephi.cpp" />
     <ClCompile Include="lookup.cpp" />
     <ClCompile Include="message.cpp" />
     <ClCompile Include="network.cpp" />
     <ClCompile Include="node.cpp" />
+    <ClCompile Include="simulator.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
     </ClCompile>

@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "generalFunctions.h"
 
 vector<string> General::TokenizeString(const string &str, const char delimiter) {
 	vector<string>	tokens;
@@ -13,3 +14,4 @@ vector<string> General::TokenizeString(const string &str, const char delimiter) 
 	tokens.push_back(inStr);
 	return tokens;
 }
+

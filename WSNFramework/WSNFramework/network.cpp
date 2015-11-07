@@ -1,197 +1,35 @@
 #include "stdafx.h"
 #include "network.h"
+#include "generalFunctions.h"
 
-//-----  CONSTRUCTOR & INIT  -----
+//-----  CONSTRUCTOR -----
 Network::Network() :
-  NetworkNodes(),
+  Nodes(),
   VirtualNodes(),
-  NetworkDiameter(0){ }
-
-bool Network::InitNetwork(double NetworkX, double NetworkY, double NetworkZ, double nodeSquaredRange, uint count) {
-	GenerateRandomNetwork(NetworkX, NetworkY, NetworkZ, nodeSquaredRange, count);
-	InitializeLookupService();
-	ComputeNeighborhoods();
-	return ( (count - 0.1*count) <= NetworkNodes.size()); //return false if we have more than 10% node collisions
-}
-
-bool Network::InitConnectedNetwork(double NetworkX, double NetworkY, double NetworkZ, double nodeSquaredRange, uint count) {
-	if(InitNetwork(NetworkX, NetworkY, NetworkZ, nodeSquaredRange, count)) {
-		RemoveIsolatedNodes();
-		RemoveIsolatedSegments2();
-	}
-	return false;
-}
-
-bool Network::InitNetwork(const string &networkDefFile, bool gexf, double squaredRange) {
-	bool success = false;
-	gexf ? success = ReadNetworkFromGEFX(networkDefFile, squaredRange) : success = ReadNetworkFromFile(networkDefFile);
-	InitializeLookupService();
-	return success;
-}
-
-bool Network::InitConnectedNetwork(const string &networkDefFile, bool gexf, double squaredRange) {
-	if(InitNetwork(networkDefFile, gexf, squaredRange)) {
-		RemoveIsolatedNodes();
-		RemoveIsolatedSegments2();
-	}
-	return false;
-}
-
-void Network::InitializeLookupService() {
-	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		LookupService.AddNode(it->Name, it->GetLocation());
-		it->SetLookup(&LookupService);
-	}
-}
+  NetworkDiameter(0),
+  COM(&Nodes) { 
+  }
 
 //-----  GETTERS -----
-
-int	Network::GetIndexOfNode(const NetworkNode &node) const {
-	for(size_t i = 0 ; i < GetNodeCount(); ++i) {
-		if(NetworkNodes[i] == node)
-			return i;
-	}
-	return -1;
-}
-
-bool Network::GetNodeByName(const string& nodeNm, NetworkNode *node) {
-	for(auto iter = NetworkNodes.begin(); iter != NetworkNodes.end(); ++iter) {
-		if(iter->Name.compare(nodeNm) == 0) {
-			node = &(*iter);
-			return true;
-		}
+bool Network::GetNodeByName(const string& nodeNm, Node *node) {
+	auto it = Nodes.find(nodeNm);
+	if(it != Nodes.end()) {
+		node = & it->second;
+		return true;
 	}
 	return false;
 }
 
 //-----  MODIFIERS -----
-void Network::AddNode(NetworkNode &n) {
-	bool isNode = false;
-	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		if(*it == n) {
-			isNode = true;
-			break;
-		}
-	}
-
-	if(!isNode && n.GetLocation().x() >= 0 && n.GetLocation().y() >= 0 && n.GetLocation().z() >= 0)
-		NetworkNodes.push_back(n);
-}
-
-void Network::AddVirtualNode(const NetworkNode &n) {
-	bool isNode = false;
-	for(auto it = VirtualNodes.begin(); it != VirtualNodes.end(); ++it) {
-		if(*it == n) {
-			isNode = true;
-			break;
-		}
-	}
-	if(!isNode)
-		VirtualNodes.push_back(n);
-}
-
-bool Network::RemoveNode(NetworkNode &n){
-	try {
-		for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		    if(*it == n) {
-				NetworkNodes.erase(it);
-				return true;
-			}
-		}
-	}
-	catch(int e){
-		cout<<"Exception number " << e << " occurred.";
-	}
-
-	return false;
-}
-
-bool Network::RemoveNodeAtIndex(size_t idx) {
-	try {
-		if(idx < NetworkNodes.size()) {
-			NetworkNodes.erase(NetworkNodes.begin() + idx);
-			return true;
-		}
-	}
-	catch(int e){
-		cout<<"Exception number " << e << " occurred.";
-	}
-	return false;
-}
-
-bool Network::RemoveNodeByName(const string &name) {
-	try {
-		for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-			if(it->Name.compare(name) == 0) {
-				NetworkNodes.erase(it);
-				return true;
-			}
-		}
-	}
-	catch(int e){
-		cout<<"Exception number " << e << " occurred.";
-	}
-	return false;
-}
-
-void Network::RemoveIsolatedNodes() {
-	try {
-		for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-			if(it->Neighbors.size() == 0)
-				NetworkNodes.erase(it);
-		}
-	}
-	catch(int e) {
-		cout<<"Exception number " << e << " occurred.";
-	}
-}
-
-//-----  COMPUTE/MODIFY
-
-//REVIEW: Is there a way to simulate "neighbor finding" in a more efficient way?
-void Network::ComputeNodeNeighborhood(NetworkNode *n) {
-	double dist;
-	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		if(it->Name.compare(n->Name) == 0)
-			continue;
-		dist = n->GetDistanceToNetworkNode(*it);
-		if(dist <= n->GetSquaredRange()) {
-			NetworkNode::Neighbor nghb(&(*it), dist);
-			n->AddNeighbor(nghb);
-		}
-		if(dist <= it->GetSquaredRange()) {
-			NetworkNode::Neighbor nghb(n, dist);
-			it->AddNeighbor(nghb);
-		}
-	}
-}
-
-void Network::ComputeNeighborhoods() {
-	double dist;
-	for(auto it1 = NetworkNodes.begin(); it1 != NetworkNodes.end() - 1; ++it1) {
-		for(auto it2 = it1 + 1; it2 != NetworkNodes.end(); ++it2) { 
-			dist = it1->GetDistanceToNetworkNode(*it2);
-			if(dist <= it1->GetSquaredRange()) {
-				NetworkNode::Neighbor nghb(&(*it2), dist);
-				it1->AddNeighbor(nghb);
-			}
-			if(dist <= it2->GetSquaredRange()) {
-				NetworkNode::Neighbor nghb(&(*it1), dist);
-				it2->AddNeighbor(nghb);
-			}
-		}
-	}
-}
-
 void Network::ComputeNetworkDiameter() {
-   double minX = NetworkNodes[0].GetLocation().x(),
-		  minY = NetworkNodes[0].GetLocation().y(),
-	      minZ = NetworkNodes[0].GetLocation().z(),
+   double minX = Nodes[0].GetLocation().x(),
+		  minY = Nodes[0].GetLocation().y(),
+	      minZ = Nodes[0].GetLocation().z(),
 		  maxX = 0,
 		  maxY = 0,
 		  maxZ = 0;
-   for(auto iter = NetworkNodes.begin(); iter != NetworkNodes.end(); ++iter) {
-	   Point_3 tmpPoint = iter->GetLocation();
+   for(auto iter = Nodes.begin(); iter != Nodes.end(); ++iter) {
+	   Point_3 tmpPoint = iter->second.GetLocation();
 	   if(tmpPoint.x() < minX)
 		   minX = tmpPoint.x();
 	   else if(tmpPoint.x() > maxX)
@@ -216,105 +54,120 @@ void Network::ComputeNetworkDiameter() {
 	   NetworkDiameter = distZ;
 }
 
-bool Network::AreNodesConnected(const string &node1, const string &node2, vector<string> &visitedNodes) {
-	NetworkNode *start;
-	GetNodeByName(node1, start);
-	if(start->HasNeighbor(node2))
-		return true;
+void Network::AddNode(Node &n) {
+	auto it = Nodes.find(n.Name);
+	if(it != Nodes.end() && n.GetLocation().x() >= 0 && n.GetLocation().y() >= 0 && n.GetLocation().z() >= 0) {
+		n.SetLookup(&LookupService);
+		n.SetCOM(&COM);
+		ComputeNodeNeighborhood(n);
+		Nodes.insert(pair<string, Node>(n.Name, n));
+		LookupService.AddNode(n.Name, n.GetLocation());
+	}
+}
 
-	visitedNodes.push_back(node1);
-	bool foundPath = false;
-	for(auto iter = start->Neighbors.begin(); !foundPath && iter != start->Neighbors.end(); ++iter) {
-		bool visited = false;
-		for(size_t i = 0; i < visitedNodes.size(); ++i) {
-			if(visitedNodes[i].compare(iter->Node->Name) == 0) {
-				visited = true;
+void Network::AddVirtualNode(const Node &n) {
+	auto it = VirtualNodes.find(n.Name);
+	if(it != VirtualNodes.end())
+		VirtualNodes.insert(pair<string, Node>(n.Name, n));
+}
+
+bool Network::RemoveNode(Node &n){
+	try {
+		auto it = Nodes.find(n.Name);
+		if(it != Nodes.end()) {
+			RemoveNodeAsNeighbor(n);
+			Nodes.erase(it);
+			LookupService.DeleteNode(n.Name);
+		}
+	}
+	catch(int e){
+		cout<<"Exception number " << e << " occurred.";
+	}
+
+	return false;
+}
+
+bool Network::RemoveNodeByName(const string &name) {
+	try {
+		auto it = Nodes.find(name);
+		if(it != Nodes.end()) {
+			RemoveNodeAsNeighbor(it->second);
+			Nodes.erase(it);
+			LookupService.DeleteNode(name);
+		}
+	}
+	catch(int e){
+		cout<<"Exception number " << e << " occurred.";
+	}
+	return false;
+}
+
+void Network::ComputeNodeNeighborhood(Node &n) {
+	for(auto it = Nodes.begin(); it != Nodes.end(); ++it) {
+		if(!it->second.HasNeighborInNeighborTable(n.Name))
+			it->second.AddMutualNeighborIfInRange(n);
+	}
+}
+
+bool Network::RemoveNodeAsNeighbor(Node &n) {
+	for(auto it = Nodes.begin(); it != Nodes.end(); ++it) {
+		if(it->second.HasNeighborInNeighborTable(n.Name)) {
+			if(!it->second.RemoveNeighbor(n.Name))
+				return false;
+		}
+	}
+	return true;
+}
+
+void Network::KeepLargestConnectedSegment() {
+	RemoveIsolatedNodes();
+	RemoveIsolatedSegments();
+}
+
+void Network::RemoveIsolatedNodes() {
+	try {
+		for(auto it = Nodes.begin(); it != Nodes.end(); ++it) {
+			if(it->second.Neighbors.size() == 0 && RemoveNodeAsNeighbor(it->second))
+				it = Nodes.erase(it);
+		}
+	}
+	catch(int e) {
+		cout<<"Exception number " << e << " occurred.";
+	}
+}
+
+void Network::GetAllNodesConnectedToNode(Node &n, vector<string> &connectednodes) {
+	for(auto n_it = n.Neighbors.begin(); n_it != n.Neighbors.end(); ++n_it) {
+		bool neighborExists = false;
+		for(auto v_it = connectednodes.begin(); v_it != connectednodes.end(); ++v_it) {
+			if(n_it->first.compare(*v_it) == 0) {
+				neighborExists = true;
 				break;
 			}
 		}
-		if(!visited)
-			foundPath |= AreNodesConnected(iter->Node->Name, node2, visitedNodes);
-	}
-	return foundPath;
-}
-
-void Network::RemoveIsolatedSegments1() {
-	if(NetworkNodes.size() > 1) {
-		vector<vector<string>>  netSegments;
-		vector<string>			newseg;
-		newseg.push_back(NetworkNodes[0].Name);
-	    netSegments.push_back(newseg);
-
-		for(auto iter = NetworkNodes.begin(); iter != NetworkNodes.end(); ++iter) {
-			bool foundPod = false;
-			string currentNode = iter->Name;
-
-			//check 1-hop neighborhoods first
-			for(size_t j=0; j < netSegments.size(); j++) { 
-				for(size_t k = 0; k < netSegments[j].size(); k++) {
-					if(netSegments[j][k].compare(iter->Name) == 0)
-						foundPod = true;
-					else if(!foundPod && iter->HasNeighbor(netSegments[j][k])) {
-						netSegments[j].push_back(iter->Name);
-						foundPod = true;
-					}
-					if(foundPod)
-						break;
-				}
-			}
-
-			if(!foundPod) {
-				for(size_t n=0; !foundPod && n < netSegments.size(); n++) {
-					vector<string> visitedNodes;
-					clock_t t_begin = clock();
-					if(AreNodesConnected(currentNode, netSegments[n][0], visitedNodes)) {
-						netSegments[n].push_back(currentNode);
-						foundPod = true;
-						break;
-					}
-					double elapsed_secs = double(clock() - t_begin)/CLOCKS_PER_SEC;
-					cout<<"Took "<<elapsed_secs << "to determine if nodes are connected" << endl;
-				}
-			}
-
-			//Add new pod with new node
-			if(!foundPod) {
-				vector<string> newseg;
-				newseg.push_back(currentNode);
-				netSegments.push_back(newseg);
-			}
-		}
-
-		uint maxSize = 0;
-		for(size_t i = 0; i < netSegments.size(); i++) {
-			if(maxSize < netSegments[i].size())
-				maxSize = netSegments[i].size();
-		}
-
-		for(size_t i = 0; i < netSegments.size(); i++) {
-			if(netSegments[i].size() != maxSize) {
-				for(size_t j=0; j<netSegments[i].size(); j++) {
-					RemoveNodeByName(netSegments[i][j]);
-				}
-			}
+		if(!neighborExists) {
+			connectednodes.push_back(n_it->first);
+			auto currentNode = Nodes.find(n_it->first);
+			if(currentNode != Nodes.end())
+				GetAllNodesConnectedToNode(currentNode->second, connectednodes);
 		}
 	}
 }
 
-//SHOULD BE FASTER
-void Network::RemoveIsolatedSegments2() {
-	if(NetworkNodes.size() > 1) {
+void Network::RemoveIsolatedSegments() {
+	if(Nodes.size() > 1) {
 		vector<vector<string>>  netSegments;
 		vector<string>			newseg;
-		newseg.push_back(NetworkNodes[0].Name);
-		NetworkNodes[0].GetAllNodesConnectedToNode(newseg);
+		Node &n = Nodes.begin()->second;
+		newseg.push_back(n.Name);
+		GetAllNodesConnectedToNode(n, newseg);
 	    netSegments.push_back(newseg);
 
-		for(auto iter = NetworkNodes.begin() ; iter != NetworkNodes.end(); ++iter) {
+		for(auto iter = Nodes.begin() ; iter != Nodes.end(); ++iter) {
 		  bool foundPod = false;
 		  for(size_t j=0; j < netSegments.size(); j++) { 
 			for(size_t k = 0; k < netSegments[j].size(); k++) {
-				if(netSegments[j][k].compare(iter->Name) == 0) {
+				if(netSegments[j][k].compare(iter->second.Name) == 0) {
 					foundPod = true;
 					break;
 				}
@@ -324,8 +177,8 @@ void Network::RemoveIsolatedSegments2() {
 		  }
 		  if(!foundPod) {
 			vector<string> newseg;
-			newseg.push_back(iter->Name);
-			iter->GetAllNodesConnectedToNode(newseg);
+			newseg.push_back(iter->second.Name);
+			GetAllNodesConnectedToNode(iter->second, newseg);
 			netSegments.push_back(newseg);
 	      }
 		}
@@ -346,157 +199,42 @@ void Network::RemoveIsolatedSegments2() {
 	}
 }
 
-void Network::GenerateRandomNetwork(double Max_x, double Max_y, double Max_z, double nodeRange, uint nodeCount) {
-	for(uint i=0; i < nodeCount; ++i){
-		stringstream nodeName;
-		nodeName<<"Node"<<i;
-		NetworkNode net(nodeName.str(), Point_3(Max_x * ((double)rand()/RAND_MAX), Max_y * ((double)rand()/RAND_MAX), Max_z * ((double)rand()/RAND_MAX)), nodeRange * nodeRange, 0);
-		AddNode(net);
-	}
+//-----  ROUTING -----
+bool Network::SendMessage(Message &m, RoutingAlg alg) {
+	return COM.SendMessage(m, alg);
 }
 
 //-----  INPUT/OUTPUT  -----
-
-bool Network::ReadNetworkFromFile(const string &fileName) {
-	ifstream in_net;
-	string	 line;
-	char	 removeChar[] = "()r= ";
-	try {
-		in_net.open(fileName);
-		if(in_net.is_open()){
-			int nodeCount = 1;
-			while(!in_net.eof()){
-				getline(in_net,line);
-				stringstream s;
-				s<<"Node"<<nodeCount;
-				NetworkNode nd;
-				nd.Name = s.str();			  
-				for(uint i = 0; i < strlen(removeChar); ++i)
-					line.erase (remove(line.begin(), line.end(), removeChar[i]), line.end());
-				if(nd.SetLocationAndSquaredRange(line)) {
-					AddNode(nd);
-					nodeCount++;
-				}
-			}
-			in_net.close();
-			return true;
-		}
-	}
-	catch(int e) {
-		cout<<"Exception number " << e << " occurred.";
-	}
-	return false;
-}
-
-bool Network::ReadNetworkFromGEFX(const string &gexfFileName, double range){
-	//NOTE: The *.gefx file does not have the radius defined so the MAX_RANGE will be used. Make sure this is as desired.
-	ifstream in_net;
-	string	 line,
-			 nodeName="";
-	int		 idx1, idx2;
-	try {
-		in_net.open(gexfFileName);
-		if(in_net.is_open()){
-			while(!in_net.eof()){
-				getline(in_net,line);
-				idx1 = line.find("<node ");
-				idx2 = line.find("position");
-				if(idx1 >=0) {
-					vector<string> nodepieces = General::TokenizeString(line, C_QUOTE);
-					if(nodepieces.size() > 2) 
-						nodeName = nodepieces[1];
-				}
-				else if(idx2 >= 0 && !nodeName.empty()) {
-					NetworkNode nd;
-					nd.Name = nodeName;
-					if(nd.SetLocationFromGEXFStr(line)) {
-						nd.SetSquaredRange(range * range);
-						AddNode(nd);
-					}
-					
-					nodeName = "";
-				}
-			}
-		}
-		return true;
-	}
-	catch(int e){
-		cout<<"Exception number " << e << " occurred.";
-		return false;
-	}
-}
-
 void Network::PrintNetwork(string &netStr) const {
 	stringstream nStr;
 	string nodeStr,
 		   neighborStr;
-	for(auto it = NetworkNodes.begin(); it != NetworkNodes.end(); ++it) {
-		it->PrintNode(nodeStr);
-		it->PrintNeighbors(neighborStr);
+	for(auto it = Nodes.begin(); it != Nodes.end(); ++it) {
+		it->second.PrintNode(nodeStr);
+		it->second.PrintNeighbors(neighborStr);
 		nStr << nodeStr << "\n\t" << neighborStr << endl;
 	}
 	netStr = nStr.str();
 }
 
-//-----  ROUTING -----
-
-bool Network::RouteMessage(Message &m, RoutingAlg algorithm) {
-	NetworkNode *startNode,
-		        *endNode;
-	if(GetNodeByName(m.StartNode, startNode) && GetNodeByName(m.EndNode, endNode)) {
-		switch(algorithm) {
-			case RoutingAlg::PURE_GREEDY:
-				return RouteGreedy(m, startNode, endNode);
-			case RoutingAlg::DIJKSTRA:
-				cout<<"DIJKSTRA IS STILL UNIMPLEMENTED"<<endl;
-				break;
-			case RoutingAlg::PURE_RANDOM:
-				cout<<"PURE RANDOM IS STILL UNIMPLEMENTED"<<endl;
-				break;
-			default:
-				return true;
-		}
-		return false;
-	}
-	else {
-		cout<< "ERROR: Could not find node : " << m.StartNode << " or " << m.EndNode << endl;
-		return false;
-	}
-}
-
-bool Network::RouteGreedy(Message &m, NetworkNode *start, NetworkNode *end) {
-	if(start && end) {
-		NetworkNode *currentNode = start;
-		while(currentNode) {
-			if(currentNode == end)
-				return true;
-
-			currentNode = currentNode->RoutePureGreedy(m);
-		}
-		return false;
-	}
-	else
-		return false;
-	
-}
 /*void Network<Point_3, Polyhedron>::ComputeBoundaryNodes() {
-	vector<NetworkNode<Point_3>> neighborhood;
-	for(size_t i = 0; i < NetworkNodes.size(); ++i) {
-		if(!NetworkNodes[i].IsBoundary()) {
-			if(NetworkNodes[i].Neighbors.size() <= 2)
-				NetworkNodes[i].AddProp(NodeInfo::BOUNDARY);
+	vector<Node<Point_3>> neighborhood;
+	for(size_t i = 0; i < Nodes.size(); ++i) {
+		if(!Nodes[i].IsBoundary()) {
+			if(Nodes[i].Neighbors.size() <= 2)
+				Nodes[i].AddProp(NodeInfo::BOUNDARY);
 			else {
 				neighborhood.clear();
-				for(auto iter = NetworkNodes[i].Neighbors.begin(); iter !=  NetworkNodes[i].Neighbors.end(); ++iter) {
-					NetworkNode<Point_3> tmp;
+				for(auto iter = Nodes[i].Neighbors.begin(); iter !=  Nodes[i].Neighbors.end(); ++iter) {
+					Node<Point_3> tmp;
 					GetNodeByName(iter->first, tmp);
 					neighborhood.push_back(tmp);
 				}
 
 				for(size_t j = 0; j < neighborhood.size() - 1; ++j) {
 					for(size_t k = j + 1; k < neighborhood.size(); ++k) {
-						if(IsNodeOnBoundary(NetworkNodes[i], neighborhood[j], neighborhood[k]))
-							NetworkNodes[i].AddProp(NodeInfo::BOUNDARY);
+						if(IsNodeOnBoundary(Nodes[i], neighborhood[j], neighborhood[k]))
+							Nodes[i].AddProp(NodeInfo::BOUNDARY);
 					}
 				}
 			}
@@ -559,7 +297,7 @@ void Network<Point_3, Polyhedron>::FindSpheresOfRaidusRHingedOnPoints(const Poin
 }
 
 template<>
-bool Network<Point_3, Polyhedron>::IsNodeOnBoundary(NetworkNode<Point_3> &n1, NetworkNode<Point_3> &n2, NetworkNode<Point_3> &n3) {
+bool Network<Point_3, Polyhedron>::IsNodeOnBoundary(Node<Point_3> &n1, Node<Point_3> &n2, Node<Point_3> &n3) {
 	SK::Sphere_3 sph1,
 		         sph2;
 	double halfSquaredRange = n1.GetSquaredRange()/2;
@@ -567,7 +305,7 @@ bool Network<Point_3, Polyhedron>::IsNodeOnBoundary(NetworkNode<Point_3> &n1, Ne
 	FindSpheresOfRaidusRHingedOnPoints(n1.GetLocation(), n2.GetLocation(), n3.GetLocation(), n1.GetSquaredRange(), sph1, sph2);
 	if(sph1.squared_radius() > 0 && IsSphereHingedOnNodesEmpty(n1, n2, n3, sph1)) {
 		Point_3 p_tmp(CGAL::to_double(sph1.center().x()), CGAL::to_double(sph1.center().y()), CGAL::to_double(sph1.center().z()));
-		NetworkNode<Point_3> pSph1("", p_tmp, n1.GetSquaredRange());
+		Node<Point_3> pSph1("", p_tmp, n1.GetSquaredRange());
 		pSph1.AddNeighbor(pair<string, double>(n1.GetName(), n1.GetSquaredRange()));
 	    pSph1.AddNeighbor(pair<string, double>(n2.GetName(), n1.GetSquaredRange()));
 		pSph1.AddNeighbor(pair<string, double>(n3.GetName(), n1.GetSquaredRange()));
@@ -576,7 +314,7 @@ bool Network<Point_3, Polyhedron>::IsNodeOnBoundary(NetworkNode<Point_3> &n1, Ne
 	}
 	if(sph2.squared_radius() > 0 && IsSphereHingedOnNodesEmpty(n1, n2, n3, sph2)) {
 		Point_3 p_tmp(CGAL::to_double(sph2.center().x()), CGAL::to_double(sph2.center().y()), CGAL::to_double(sph2.center().z()));
-		NetworkNode<Point_3> pSph2("", p_tmp, n1.GetSquaredRange());
+		Node<Point_3> pSph2("", p_tmp, n1.GetSquaredRange());
 		pSph2.AddNeighbor(pair<string, double>(n1.GetName(), halfSquaredRange));
 		pSph2.AddNeighbor(pair<string, double>(n2.GetName(), halfSquaredRange));
 		pSph2.AddNeighbor(pair<string, double>(n3.GetName(), halfSquaredRange));
@@ -614,7 +352,7 @@ bool Network<Point_3, Polyhedron>::IsNodeOnBoundary(NetworkNode<Point_3> &n1, Ne
 }
 
 template<>
-bool Network<Point_3, Polyhedron>::IsSphereHingedOnNodesEmpty(NetworkNode<Point_3> &n1, NetworkNode<Point_3> &n2, NetworkNode<Point_3> &n3, const SK::Sphere_3 &sph) {
+bool Network<Point_3, Polyhedron>::IsSphereHingedOnNodesEmpty(Node<Point_3> &n1, Node<Point_3> &n2, Node<Point_3> &n3, const SK::Sphere_3 &sph) {
 	std::set<pair<string, double>> allNeighbors;
 	allNeighbors.insert(n1.Neighbors.begin(), n1.Neighbors.end());
 	allNeighbors.insert(n2.Neighbors.begin(), n2.Neighbors.end());
@@ -622,7 +360,7 @@ bool Network<Point_3, Polyhedron>::IsSphereHingedOnNodesEmpty(NetworkNode<Point_
 	Point_3 tmpP;
 	for(auto iter = allNeighbors.begin(); iter != allNeighbors.end(); iter++) {
 		if(iter->first.compare(n1.GetName()) != 0 && iter->first.compare(n2.GetName()) != 0 && iter->first.compare(n3.GetName()) != 0) {
-			NetworkNode<Point_3> node1;
+			Node<Point_3> node1;
 			if(GetNodeByName(iter->first, node1)) {
 				tmpP = node1.GetLocation();
 				SK::Point_3 sphericalPoint(tmpP.x(), tmpP.y(), tmpP.z());

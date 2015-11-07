@@ -1,3 +1,5 @@
+using namespace std;
+
 namespace General {
-	std::vector<std::string> TokenizeString(const std::string &, const char);
+	vector<string> TokenizeString(const string &str, const char delimiter);
 }

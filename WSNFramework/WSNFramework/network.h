@@ -10,62 +10,48 @@
 //So, all the geometry should still hold and generalization of theorems shouldn't be lost by this assumption.
 class Network {
 public:
-	vector<NetworkNode>	NetworkNodes;
-	vector<NetworkNode> VirtualNodes;
+	NodeSet	Nodes;
+	NodeSet VirtualNodes;
 
 	//Constructor & Init
 	Network();
-	bool   InitNetwork(double x, double y, double z, double nodeSquaredRange, uint count);
-	bool   InitConnectedNetwork(double x, double y, double z, double nodeSquaredRange, uint count);
-	bool   InitNetwork(const string &networkDefFile, bool Gexf = false, double squaredRange = 0);
-	bool   InitConnectedNetwork(const string &networkDefFile, bool Gexf = false, double squaredRange = 0);
 
 	//Getters
-	int	   GetIndexOfNode(const NetworkNode &n) const;
-	bool   GetNodeByName(const string &name, NetworkNode *n);
-	uint   GetNodeCount() const { return NetworkNodes.size(); };
+	bool   GetNodeByName(const string &name, Node *n);
+	uint   GetNodeCount() const { return Nodes.size(); };
 
 	//Modifiers
-	void   AddNode(NetworkNode &n);
-	void   AddVirtualNode(const NetworkNode &n);
-	bool   RemoveNode(NetworkNode &n);
-	bool   RemoveNodeAtIndex(size_t idx);
+	void   AddNode(Node &n);
+	void   AddVirtualNode(const Node &n);
+	bool   RemoveNode(Node &n);
 	bool   RemoveNodeByName(const string &n);
 	void   ComputeNetworkDiameter();
+	void   KeepLargestConnectedSegment();
 
 	//Input/Output
 	void   PrintNetwork(string &netStr) const;
 
-	//Routing
-	bool   RouteMessage(Message &m, RoutingAlg algorithm);	
-	//void   ComputeBoundaryNodes();
-	//bool   AreNodesConnected(const string &n1, const string &n2, vector<string> &v);
+	//Routing Interface
+	bool   SendMessage(Message &m, RoutingAlg alg);
+
 
 
 private:
-	double NetworkDiameter;
-	Lookup LookupService;
-
-	//Compute/Modify
-	void   ComputeNodeNeighborhood(NetworkNode *node);
-	void   ComputeNeighborhoods();
-	void   InitializeLookupService();
-	void   RemoveIsolatedNodes();
-	void   RemoveIsolatedSegments1();
-	void   RemoveIsolatedSegments2();
-	bool   AreNodesConnected(const string &n1, const string &n2, vector<string> &v);
-	void   GenerateRandomNetwork(double x, double y, double z, double nodeSquaredRange, uint count);
-
-	//Input/Output
-	bool   ReadNetworkFromFile(const string &fileName);
-    bool   ReadNetworkFromGEFX(const string &gexfFileName, double range);
+	double    NetworkDiameter;
+	Lookup	  LookupService;
+	ComCenter COM;
+		
+	void ComputeNodeNeighborhood(Node &node);
+	bool RemoveNodeAsNeighbor(Node &n);
+	void RemoveIsolatedNodes();
+	void RemoveIsolatedSegments();
+	void GetAllNodesConnectedToNode(Node &n, vector<string> &connectednodes);
 
 	//Routing
-	bool   RouteGreedy(Message &m, NetworkNode *start, NetworkNode *end);
-
+	//void   ComputeBoundaryNodes();
 	//void   FindSpheresOfRaidusRHingedOnPoints(const Point_3 &, const Point_3 &, const Point_3 &, double, SK::Sphere_3 &, SK::Sphere_3 &);
-	//bool   IsNodeOnBoundary(NetworkNode<Point_3> &, NetworkNode<Point_3> &, NetworkNode<Point_3> &);
-	//bool   IsSphereHingedOnNodesEmpty(NetworkNode<Point_3> &, NetworkNode<Point_3> &, NetworkNode<Point_3> &, const SK::Sphere_3 &);
+	//bool   IsNodeOnBoundary(Node<Point_3> &, Node<Point_3> &, Node<Point_3> &);
+	//bool   IsSphereHingedOnNodesEmpty(Node<Point_3> &, Node<Point_3> &, Node<Point_3> &, const SK::Sphere_3 &);
 };
 
 #endif //NETWORK_H

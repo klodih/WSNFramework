@@ -1,8 +1,9 @@
 #include "stdafx.h"
 #include "node.h"
+#include "generalFunctions.h"
 
 //-----  CONSTRUCTORS  -----
-NetworkNode::NetworkNode():
+Node::Node():
   Name(),
   Location(),
   SquaredRange(0),
@@ -11,8 +12,16 @@ NetworkNode::NetworkNode():
   Neighbors() {
   }
 
+Node::Node(const string & name):
+  Name(name),
+  Location(),
+  SquaredRange(0),
+  Properties(0),
+  Speed(0),
+  Neighbors() {
+  }
 
-NetworkNode::NetworkNode(const string& name, const Point_3& loc, double r, double s) :
+Node::Node(const string& name, const Point_3& loc, double r, double s) :
     Name(name),
 	Properties(0),
 	Neighbors() { 
@@ -22,20 +31,21 @@ NetworkNode::NetworkNode(const string& name, const Point_3& loc, double r, doubl
 }
 
 //-----  GETTERS  -----
-NetworkNode::Neighbor NetworkNode::GetClosestNeighborToNode(const string& destName) const {	
-	Neighbor n(nullptr, 0); //if no closer neighbor is found to destination, then set closest neighbor to this
+string Node::GetClosestNeighborToNode(const string& destName) const {	
+	string n = ""; //if no closer neighbor is found to destination, then set closest neighbor to this
 	Point_3 destLoc;
 				  
 	if(Neighbors.size() > 0 && MyLookup != nullptr && MyLookup->GetLocationOfNode(destName, destLoc)) {
-		double minDist = GetDistanceToLocation(destLoc),
+		double minDist = DistanceToLocation(destLoc),
 			   dist;
 
 	   for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		   if(it->Node != nullptr) {
-			   dist = CGAL::squared_distance(it->Node->GetLocation(), destLoc);
+		  Point_3 loc;
+		  if(MyLookup->GetLocationOfNode(it->first, loc)) {
+			   dist = CGAL::squared_distance(loc, destLoc);
 				if(dist < minDist) {
 					minDist = dist;
-					n = *it;
+					n = it->first;
 				}	
 		   }	
 		}
@@ -43,43 +53,8 @@ NetworkNode::Neighbor NetworkNode::GetClosestNeighborToNode(const string& destNa
 	return n;
 }
 
-string NetworkNode::GetClosestNeighbor() const {
-	string closestNghb;
-	if(Neighbors.size() > 0) {
-		auto it = Neighbors.begin();
-		double minDist = it->Distance;
-		closestNghb =it->Node->Name;
-		while(it != Neighbors.end()) {
-			if(it->Distance < minDist)
-				closestNghb = it->Node->Name;
-			++it;
-		}
-	}
-	else
-		closestNghb = Name;
-	return closestNghb;
-}
-
-bool NetworkNode::GetAllNodesConnectedToNode(vector<string> &connectednodes) {
-	for(auto n_it = Neighbors.begin(); n_it != Neighbors.end(); ++n_it) {
-		bool neighborExists = false;
-		for(auto v_it = connectednodes.begin(); v_it != connectednodes.end(); ++v_it) {
-			if(n_it->Node->Name.compare(*v_it) == 0) {
-				neighborExists = true;
-				break;
-			}
-		}
-		if(!neighborExists) {
-			connectednodes.push_back(n_it->Node->Name);
-			return n_it->Node->GetAllNodesConnectedToNode(connectednodes);
-		}
-	}
-	return true;
-}
-
 //-----  SETTERS  -----
-
-bool NetworkNode::SetLocationAndSquaredRange(const string &nodeLocation) {
+bool Node::SetLocationAndSquaredRangeFromStr(const string &nodeLocation) {
 	vector<string>	tokens = General::TokenizeString(nodeLocation, C_COMMA);
 	if(tokens.size() == 4){
 		Point_3 p(stod(tokens[0]), stod(tokens[1]), stod(tokens[2]));
@@ -96,7 +71,7 @@ bool NetworkNode::SetLocationAndSquaredRange(const string &nodeLocation) {
 	}
 }
 
-bool NetworkNode::SetLocationFromGEXFStr(const string &gexfLoc) {
+bool Node::SetLocationFromGEXFStr(const string &gexfLoc) {
 	vector<string> tokens = General::TokenizeString(gexfLoc, C_QUOTE);
 	if(tokens.size() == 7) {
 		Point_3 p(stod(tokens[1]), stod(tokens[3]), stod(tokens[5]));
@@ -113,45 +88,30 @@ bool NetworkNode::SetLocationFromGEXFStr(const string &gexfLoc) {
 
 //----- CHECKERS  -----
 
-bool NetworkNode::HasNeighbor(const Neighbor &n){
-	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		if(it->Node == n.Node)
-			return true;
-	}
-	return false;
-}
-
-bool NetworkNode::HasNeighbor(const string& neighborName) const{
-	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		if((it->Node)->Name.compare(neighborName) == 0)
-			return true;
-	}
-	return false;
+bool Node::HasNeighborInNeighborTable(const string &n) const {
+	auto it = Neighbors.find(n);
+	return (it != Neighbors.end());
 }
 
 //-----  MODIFIERS  -----
-
-bool NetworkNode::AddNeighbor(const Neighbor &n){
-	bool exists = false;
-	for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-		if(it->Node == n.Node)
-			exists = true;
-	}
-
-	if(!exists) {
-		Neighbors.push_back(n);
-		return true;
-	}
-	return false;
+void Node::AddNeighbor(const string &n, const double dist){
+	Neighbors[n] = dist;
 }
 
-bool NetworkNode::RemoveNeighbor(const Neighbor &n){
+void Node::AddMutualNeighborIfInRange(Node &n) {
+	double dist = DistanceToNode(n);
+	if(dist <= SquaredRange)
+		AddNeighbor(n.Name, dist);
+	if(dist <= n.SquaredRange)
+		n.AddNeighbor(Name, dist);
+}
+
+bool Node::RemoveNeighbor(const string &n){
+	auto it = Neighbors.find(n);
 	try {
-		for(auto it = Neighbors.begin(); it != Neighbors.end(); ++it) {
-			if(it->Node == n.Node) {
-				Neighbors.erase(it);
-				return true;
-			}
+		if(it != Neighbors.end()) {
+			Neighbors.erase(it);
+			return true;
 		}
 	}
 	catch(int e){
@@ -162,40 +122,42 @@ bool NetworkNode::RemoveNeighbor(const Neighbor &n){
 
 //----- OPERATIONS  -----
 
-bool NetworkNode::operator==(const NetworkNode& n1) const{
+bool Node::operator==(const Node& n1) const{
 	return Location == n1.Location && SquaredRange == n1.SquaredRange;
 }
 
-bool NetworkNode::operator!=(const NetworkNode& n1) const{
+bool Node::operator!=(const Node& n1) const{
 	return !operator==(n1);
 }
 
-bool NetworkNode::operator>(const NetworkNode& n1) const{
+bool Node::operator>(const Node& n1) const{
 	return Location > n1.GetLocation();
 }
 
-bool NetworkNode::operator<(const NetworkNode& n1) const{
+bool Node::operator<(const Node& n1) const{
 	return Location > n1.GetLocation();
 }
 
 //-----  INPUT/OUTPUT  -----
 
 //eg. Node1=(1, 1, 1, r = 3)
-void NetworkNode::PrintNode(string &nodeStr) const {
+void Node::PrintNode(string &nodeStr) const {
 	stringstream nStr;
     nStr << Name << "=( " << Location.x() << ", " << Location.y() << ", " << Location.z() << ", r = " << SquaredRange << " )"; 
 	nodeStr = nStr.str();
 }
 
 //eg. N(Node1)=[Node2, Node3, Node4]
-void NetworkNode::PrintNeighbors(string &neighborStr) const {
+void Node::PrintNeighbors(string &neighborStr) const {
 	if(Neighbors.size() > 0) {
 		stringstream nStr;
 		auto it = Neighbors.begin();
-		nStr << "N(" << Name << ")=[" << it->Node->Name;
-		while(it != Neighbors.end() - 1) {
+		nStr << "N(" << Name << ")=[" << it->first;
+		auto oneBeforeEnd = Neighbors.end();
+		std::advance(oneBeforeEnd, -1);
+		while(it != oneBeforeEnd) {
 			++it;
-			nStr << ", " << it->Node->Name;
+			nStr << ", " << it->first;
 		}
 		nStr << "]" << endl;
 			
@@ -204,22 +166,56 @@ void NetworkNode::PrintNeighbors(string &neighborStr) const {
 }
 
 //-----  ROUTING -----
-
-NetworkNode* NetworkNode::RoutePureGreedy(Message &m) {
-	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
-	Neighbor n = GetClosestNeighborToNode(m.EndNode);
-	return n.Node;
+bool Node::RouteMessage(Message &message, RoutingAlg routingAlgorithm, string &nextNode) {
+	bool success = false;
+	switch(routingAlgorithm) {
+		case PURE_GREEDY:
+			success = RoutePureGreedy(message, nextNode);
+			break;
+		case PURE_RANDOM:
+			success = RoutePureRandom(message, nextNode);
+			break;
+		case DIJKSTRA:
+			cout<<"DIJKSTRA IS NOT IMPLEMENTED YET";
+			break;
+		default:
+			cout<<"ERROR: Unknown Routing Algorithm name."<<endl;
+	}
+	return success;
 }
 
-NetworkNode* NetworkNode::RoutePureRandom(Message &m) {
+bool Node::ReceiveMessage(Message &message) {
+	if(message.GetEndNode().compare(Name) == 0) {
+		message.AddNodeToPath(Name);
+		return true;
+	}
+	else
+		cout<<"ERROR: Node " << Name << " is not the destination node of this message..."<<endl;
+	return false;
+}
+
+bool Node::RoutePureGreedy(Message &m, string &nextNode) {
+	if(!IsProp(INPATH))
+		AddProp(INPATH);
 	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
-	Neighbor n(nullptr, 0);
+	nextNode = GetClosestNeighborToNode(m.GetEndNode());
+	return nextNode.compare("") != 0;
+}
+
+bool Node::RoutePureRandom(Message &m, string &nextNode) {
+	nextNode = "";
+	if(!IsProp(INPATH))
+		AddProp(INPATH);
+	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
+	string neighbor;
 	if(Neighbors.size() > 1) {
 		srand((uint)time(NULL));
-		n = Neighbors[rand() % Neighbors.size()];
+		auto it = Neighbors.begin();
+		std::advance(it, rand() % Neighbors.size());
+		neighbor = it->first;
 	}
 	else if(Neighbors.size() == 1)
-		n = *Neighbors.begin();
+		neighbor = Neighbors.begin()->first;
 
-	return n.Node;
+	return nextNode.compare("") != 0;
 }

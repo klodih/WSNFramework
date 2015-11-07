@@ -2,15 +2,6 @@
 #include "message.h"
 
 //-----  CONSTRUCTORS  -----
-Message::Message() :
-	StartNode(),
-	EndNode(),
-	Header(),
-	AdditionalInfo(),
-	Path(), 
-	HeaderMaxSize(0),
-	AdditionalInfoMaxSize(0){}
-
 Message::Message(const string& start, const string& end) :
 	StartNode(start),
 	EndNode(end) {}
