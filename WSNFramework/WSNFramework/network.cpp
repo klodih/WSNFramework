@@ -56,7 +56,7 @@ void Network::ComputeNetworkDiameter() {
 
 void Network::AddNode(Node &n) {
 	auto it = Nodes.find(n.Name);
-	if(it != Nodes.end() && n.GetLocation().x() >= 0 && n.GetLocation().y() >= 0 && n.GetLocation().z() >= 0) {
+	if(it == Nodes.end() && n.GetLocation().x() >= 0 && n.GetLocation().y() >= 0 && n.GetLocation().z() >= 0) {
 		n.SetLookup(&LookupService);
 		n.SetCOM(&COM);
 		ComputeNodeNeighborhood(n);
@@ -87,11 +87,12 @@ bool Network::RemoveNode(Node &n){
 	return false;
 }
 
-bool Network::RemoveNodeByName(const string &name) {
+bool Network::RemoveNodeByName(const string &name, bool removeAsNeighbor) {
 	try {
 		auto it = Nodes.find(name);
 		if(it != Nodes.end()) {
-			RemoveNodeAsNeighbor(it->second);
+			if(removeAsNeighbor)
+				RemoveNodeAsNeighbor(it->second);
 			Nodes.erase(it);
 			LookupService.DeleteNode(name);
 		}
@@ -140,7 +141,7 @@ void Network::GetAllNodesConnectedToNode(Node &n, vector<string> &connectednodes
 	for(auto n_it = n.Neighbors.begin(); n_it != n.Neighbors.end(); ++n_it) {
 		bool neighborExists = false;
 		for(auto v_it = connectednodes.begin(); v_it != connectednodes.end(); ++v_it) {
-			if(n_it->first.compare(*v_it) == 0) {
+			if(n_it->first == *v_it) {
 				neighborExists = true;
 				break;
 			}
@@ -167,7 +168,7 @@ void Network::RemoveIsolatedSegments() {
 		  bool foundPod = false;
 		  for(size_t j=0; j < netSegments.size(); j++) { 
 			for(size_t k = 0; k < netSegments[j].size(); k++) {
-				if(netSegments[j][k].compare(iter->second.Name) == 0) {
+				if(netSegments[j][k] == iter->second.Name) {
 					foundPod = true;
 					break;
 				}
@@ -197,6 +198,12 @@ void Network::RemoveIsolatedSegments() {
 			}
 		}
 	}
+}
+
+void Network::ClearNodeProps() {
+	for(auto iter = Nodes.begin() ; iter != Nodes.end(); ++iter)
+		iter->second.ResetProp();
+
 }
 
 //-----  ROUTING -----
@@ -359,7 +366,7 @@ bool Network<Point_3, Polyhedron>::IsSphereHingedOnNodesEmpty(Node<Point_3> &n1,
 	allNeighbors.insert(n3.Neighbors.begin(), n3.Neighbors.end());
 	Point_3 tmpP;
 	for(auto iter = allNeighbors.begin(); iter != allNeighbors.end(); iter++) {
-		if(iter->first.compare(n1.GetName()) != 0 && iter->first.compare(n2.GetName()) != 0 && iter->first.compare(n3.GetName()) != 0) {
+		if(iter->first == n1.GetName() && iter->first == n2.GetName() && iter->first == n3.GetName()) {
 			Node<Point_3> node1;
 			if(GetNodeByName(iter->first, node1)) {
 				tmpP = node1.GetLocation();

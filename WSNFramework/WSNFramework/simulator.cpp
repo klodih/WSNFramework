@@ -3,7 +3,8 @@
 #include "generalFunctions.h"
 
 RoutingSimulator::RoutingSimulator() :
-	SimNetwork() {}
+	SimNetwork(),
+	SimCount(0) {}
 
 bool RoutingSimulator::InitNetwork(double netLength, double netWidth, double netHeight, double nodeRange, uint nodeCount, bool keepConnectedSegmentsOnly) {
 	GenerateRandomNetwork(netLength, netWidth, netHeight, nodeRange, nodeCount);
@@ -34,8 +35,8 @@ void RoutingSimulator::GenerateRandomNetwork(double netLength, double netWidth, 
 	for(uint i=0; i < nodeCount; ++i){
 		stringstream nodeName;
 		nodeName<<"Node"<<i;
-		Node net(nodeName.str(), Point_3(netLength * ((double)rand()/RAND_MAX), netWidth * ((double)rand()/RAND_MAX), netHeight * ((double)rand()/RAND_MAX)), nodeRange * nodeRange, 0);
-		SimNetwork.AddNode(net);
+		Node n(nodeName.str(), Point_3(netLength * ((double)rand()/RAND_MAX), netWidth * ((double)rand()/RAND_MAX), netHeight * ((double)rand()/RAND_MAX)), nodeRange * nodeRange, 0);
+		SimNetwork.AddNode(n);
 	}
 }
 
@@ -109,6 +110,25 @@ void RoutingSimulator::PrintNetwork(string &netStr) const {
 	SimNetwork.PrintNetwork(netStr);
 }
 
-void RoutingSimulator::SaveNetworkToGexf(bool printBoundary, bool path) {
-	Gephi::Gexf_SaveNetwork(GEXF_PATH + "test2.gexf", "Graph1", SimNetwork, printBoundary, path);
+void RoutingSimulator::SaveNetworkToGexf(const string &fileName, const string& graphName, bool printBoundary, bool path) {
+	Gephi::Gexf_SaveNetwork(GEXF_PATH + fileName, graphName, SimNetwork, printBoundary, path);
+}
+
+bool RoutingSimulator::RunRoutingSimulation(RoutingAlg algType, const string &startNode, const string &endNode) {
+	stringstream sId;
+	sId << "Message" << SimCount;
+	Message message(sId.str(), startNode, endNode, algType);
+	SimNetwork.ClearNodeProps();
+	bool good = SimNetwork.SendMessage(message, algType);
+	cout << message.PrintMessage();
+	SimCount++;
+	return good;
+}
+
+bool RoutingSimulator::RunRoutingSimulation(RoutingAlg algType) {
+	auto itS = SimNetwork.Nodes.begin(),
+		 itD = SimNetwork.Nodes.begin();
+		 std::advance(itS, rand() % SimNetwork.Nodes.size());
+		 std::advance(itD, rand() % SimNetwork.Nodes.size());
+		 return RunRoutingSimulation(algType, itS->second.Name, itD->second.Name);
 }

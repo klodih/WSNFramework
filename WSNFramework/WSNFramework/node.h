@@ -39,6 +39,7 @@ public:
 
 	//Modifiers
 	void	AddProp(const NodeInfo ni) { Properties |= ni; };
+	void    ResetProp() { Properties = 0; };
 	void	AddNeighbor(const string &n, const double dist);
 	void	AddMutualNeighborIfInRange(Node &n);
 	bool	RemoveNeighbor(const string &n);
@@ -71,6 +72,7 @@ private:
 	//Routing
 	bool RoutePureGreedy(Message &m, string &nextNode);
 	bool RoutePureRandom(Message &m, string &nextNode);
+	bool RouteDijkstra(Message &m, string &nextNode);
 };
 
 #endif //NODE_H

@@ -24,9 +24,10 @@ public:
 	void   AddNode(Node &n);
 	void   AddVirtualNode(const Node &n);
 	bool   RemoveNode(Node &n);
-	bool   RemoveNodeByName(const string &n);
+	bool   RemoveNodeByName(const string &n, bool removeAsNeighbor = false);
 	void   ComputeNetworkDiameter();
 	void   KeepLargestConnectedSegment();
+	void   ClearNodeProps();
 
 	//Input/Output
 	void   PrintNetwork(string &netStr) const;

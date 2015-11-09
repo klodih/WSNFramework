@@ -176,7 +176,7 @@ bool Node::RouteMessage(Message &message, RoutingAlg routingAlgorithm, string &n
 			success = RoutePureRandom(message, nextNode);
 			break;
 		case DIJKSTRA:
-			cout<<"DIJKSTRA IS NOT IMPLEMENTED YET";
+			success = RouteDijkstra(message, nextNode);
 			break;
 		default:
 			cout<<"ERROR: Unknown Routing Algorithm name."<<endl;
@@ -185,7 +185,7 @@ bool Node::RouteMessage(Message &message, RoutingAlg routingAlgorithm, string &n
 }
 
 bool Node::ReceiveMessage(Message &message) {
-	if(message.GetEndNode().compare(Name) == 0) {
+	if(message.GetEndNode() == Name) {
 		message.AddNodeToPath(Name);
 		return true;
 	}
@@ -199,7 +199,7 @@ bool Node::RoutePureGreedy(Message &m, string &nextNode) {
 		AddProp(INPATH);
 	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
 	nextNode = GetClosestNeighborToNode(m.GetEndNode());
-	return nextNode.compare("") != 0;
+	return !nextNode.empty();
 }
 
 bool Node::RoutePureRandom(Message &m, string &nextNode) {
@@ -209,7 +209,7 @@ bool Node::RoutePureRandom(Message &m, string &nextNode) {
 	m.AddNodeToPath(Name); //Add Current node to path for tracking purposes only
 	string neighbor;
 	if(Neighbors.size() > 1) {
-		srand((uint)time(NULL));
+		//srand((uint)time(NULL));
 		auto it = Neighbors.begin();
 		std::advance(it, rand() % Neighbors.size());
 		neighbor = it->first;
@@ -217,5 +217,18 @@ bool Node::RoutePureRandom(Message &m, string &nextNode) {
 	else if(Neighbors.size() == 1)
 		neighbor = Neighbors.begin()->first;
 
-	return nextNode.compare("") != 0;
+	return !nextNode.empty();
+}
+
+bool Node::RouteDijkstra(Message &m, string &nextNode) {
+	nextNode = "";
+	m.AddNodeToPath(Name);
+	if(m.Header_PrecomputedPath.size() > 0) {
+		auto current = m.Header_PrecomputedPath.begin();
+		if(*current == Name) {
+			m.Header_PrecomputedPath.erase(current);
+			nextNode = *m.Header_PrecomputedPath.begin();
+		}
+	}
+	return !nextNode.empty();
 }

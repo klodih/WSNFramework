@@ -16,10 +16,13 @@ public:
 	bool InitNetwork(const string &networkDefFile, bool keepConnectedSegmentsOnly = true);
 	bool InitNetwork(const string &networkDefFile, double squaredRange, bool keepConnectedSegmentsOnly = true);
     void PrintNetwork(string &netStr) const;
-	void SaveNetworkToGexf(bool printBoundary = false, bool path = true);
+	void SaveNetworkToGexf(const string &fileName, const string& graphName, bool printBoundary = false, bool path = true);
+	bool RunRoutingSimulation(RoutingAlg algType);
+	bool RunRoutingSimulation(RoutingAlg algType, const string &startNode, const string &endNode);
 
 private:
 	Network SimNetwork;
+	uint	SimCount;
 
 	//Network Creation
 	void GenerateRandomNetwork(double netLength, double netWidth, double netHeight, double nodeRange, uint nodeCount);

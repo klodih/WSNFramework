@@ -4,30 +4,28 @@
 
 class Message {
 public:
-	Message(const string& start, const string& end);
-	vector<string> PrecomputedPath;
+	Message(const string& id, const string& start, const string& end, RoutingAlg alg);
+	vector<string> Header_PrecomputedPath;
 
 	//Getters
 	string GetStartNode() const { return StartNode; };
 	string GetEndNode() const { return EndNode; };
-	string GetHeader() const { return Header; };
+	string GetID() const { return MessageID; };
 	vector<string> GetPath() { return Path; };
-	string GetAdditionalInfo() const { return AdditionalInfo; };
+	RoutingAlg  GetRouteMode() { return RouteMode; };
 
 	//Modifiers
-	void   AddToHeader(const string& h);
 	void   AddNodeToPath(const string& node) { Path.push_back(node); };
-	void   AddNodeToPrecomputedPath(const string& node) { PrecomputedPath.push_back(node); };
-	void   AddAdditionalInfo(const string& info);
+	void   AddNodeToPrecomputedPath(const string& node) { Header_PrecomputedPath.push_back(node); };
+
+	string PrintMessage();
 
 private:
-	string StartNode,
-		   EndNode,
-		   Header,
-		   AdditionalInfo;
+	string         MessageID,
+		           StartNode,
+			       EndNode;
+    RoutingAlg	   RouteMode;
 	vector<string> Path;
-	uint   HeaderMaxSize,
-		   AdditionalInfoMaxSize;
 };
 
 #endif //MESSAGE_H

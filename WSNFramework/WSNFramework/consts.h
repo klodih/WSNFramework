@@ -15,7 +15,8 @@ enum NodeInfo {
 enum RoutingAlg {
 	PURE_GREEDY,
 	PURE_RANDOM,
-	DIJKSTRA
+	DIJKSTRA,
+	NONE
 };
 
 const std::string GEXF_PATH = "C:\\Users\\Klodi\\Documents\\Thesis Documents\\Implementation and Analysis\\GEXF_GRAPHS\\";
